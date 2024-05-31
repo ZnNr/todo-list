@@ -1,0 +1,73 @@
+openapi: 3.0.0
+info:
+  title: Todo List API
+  description: API для управления задачами в приложении todo list
+  version: 1.0.0
+servers:
+  - url: http://api.example.com/v1
+
+paths:
+  /tasks:
+    get:
+      summary: Получить все задачи
+      responses:
+        '200':
+          description: Успешный запрос
+    post:
+      summary: Создать новую задачу
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                date:
+                  type: string
+                status:
+                  type: string
+      responses:
+        '201':
+          description: Задача успешно создана
+
+  /tasks/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Получить информацию о задаче
+      responses:
+        '200':
+          description: Успешный запрос
+    put:
+      summary: Обновить информацию о задаче
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                date:
+                  type: string
+                status:
+                  type: string
+      responses:
+        '200':
+          description: Задача успешно обновлена
+    delete:
+      summary: Удалить задачу
+      responses:
+        '204':
+          description: Задача успешно удалена
