@@ -1,3 +1,4 @@
+// Package settings предоставляет функциональность для работы с настройками приложения.
 package settings
 
 import "os"
@@ -5,10 +6,12 @@ import "os"
 // DateFormat представляет формат даты по умолчанию.
 var DateFormat = "20060102"
 
+var TasksListRowsLimit = 50
+
 // defaultEnv содержит значения по умолчанию для некоторых настроек.
 var defaultEnv = map[string]string{
-	"TODO_PORT": "7540",
-	//"TODO_DBFILE": "todolist.db", //sqllite config
+	"TODO_PORT":   "7540",
+	"TODO_DBFILE": "./todolist.db",
 }
 
 // Setting возвращает значение настройки для указанного ключа.
@@ -20,7 +23,3 @@ func Setting(key string) string {
 	}
 	return defaultEnv[key]
 }
-
-//
-//// WebPath содержит путь к директории с статическими файлами для веб-сервера.
-//const WebPath = "./web/"
