@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "7540:7540"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - ENV_VARIABLE=value
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    volumes:
+      - ./db:/var/lib/postgres/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
