@@ -12,19 +12,19 @@ func StartServer() {
 
 	// Инициализация маршрутизатора.
 	r := chi.NewRouter()
-	//
-	//// Установка маршрутов для обработки файлов и API.
-	//r.Get("/*", FileServer) // Обработка запросов к файлам
+	// Установка маршрутов для обработки файлов и API.
 
 	// Группировка маршрутов API для задач.
 	r.Group(func(r chi.Router) {
-		r.Post("/task", handlers.PostTask)          // Создание задачи
-		r.Put("/task", handlers.PutTask)            // Обновление задачи
-		r.Delete("/task", handlers.DeleteTask)      // Удаление задачи
-		r.Get("/task", handlers.GetTask)            // Получение конкретной задачи
-		r.Post("/task/done", handlers.DonePostTask) // Отметка задачи как выполненной
-		r.Get("/tasks", handlers.GetTasks)          // API для получения списка задач
-		r.Get("/ping", handlers.CheckDatabaseAvailability)
+		r.Post("/task", handlers.PostTask)                     // Создание задачи
+		r.Put("/task", handlers.PutTask)                       // Обновление задачи
+		r.Delete("/task", handlers.DeleteTask)                 // Удаление задачи
+		r.Get("/task", handlers.GetTask)                       // Получение конкретной задачи
+		r.Post("/task/done", handlers.DonePostTask)            // Отметка задачи как выполненной
+		r.Get("/tasks", handlers.GetALLTasks)                  // API для получения списка ВСЕХ задач
+		r.Get("/status", handlers.GetTasksByStatus)            // API для получения списка списка всех задачь с определенныфм статусом
+		r.Get("/datestatus", handlers.GetTasksByDateAndStatus) // API для получения списка ВСЕХ задач с определенным статусом и за определенную дату
+
 	})
 
 	// Старт веб-сервера на указанном порту.
@@ -35,10 +35,3 @@ func StartServer() {
 		log.Fatalf("Error starting the web server: %v", err)
 	}
 }
-
-//
-//// FileServer обрабатывает запросы на статические файлы и отправляет их клиенту.
-//func FileServer(w http.ResponseWriter, r *http.Request) {
-//	handler := http.FileServer(http.Dir("/" + settings.WebPath)) // Требуется начальный "/"
-//	handler.ServeHTTP(w, r)
-//}

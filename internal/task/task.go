@@ -14,10 +14,10 @@ type TaskService struct {
 	taskData *database.TaskData
 }
 
+// sliceToTasks конвертирует срез задач в структуру TaskList
 func sliceToTasks(list []model.Task) *model.TaskList {
 	if list == nil {
 		return &model.TaskList{Tasks: []model.Task{}}
-
 	}
 	return &model.TaskList{Tasks: list}
 }
@@ -54,6 +54,7 @@ func (service TaskService) CreateTask(task model.Task) (int, error) {
 	return int(id), err
 }
 
+// UpdateTask обновляет существующую задач
 func (service TaskService) UpdateTask(task model.Task) error {
 	err := convertTask(&task)
 	if err != nil {
@@ -70,24 +71,28 @@ func (service TaskService) UpdateTask(task model.Task) error {
 	return nil
 }
 
-//func (service TaskService) GetTasks() (*model.TaskList, error) {
-//	list, err := service.taskData.GetTasks(settings.TasksListRowsLimit)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return sliceToTasks(list), err
-//}
-
-func (service TaskService) GetTasksByStatus(status string, page int, itemsPerPage int) (*model.TaskList, error) {
-	list, err := service.taskData.GetTasksByStatus(status, page, itemsPerPage)
+// GetTasks возвращает список задач
+func (service TaskService) GetTasks() (*model.TaskList, error) {
+	list, err := service.taskData.GetTasks(settings.TasksListRowsLimit)
+	if err != nil {
+		return nil, err
+	}
 	return sliceToTasks(list), err
 }
 
-func (service TaskService) GetTasksByDateAndStatus(date string, status string, page int, itemsPerPage int) (*model.TaskList, error) {
-	list, err := service.taskData.GetTasksByDateAndStatus(date, status, page, itemsPerPage)
+// GetTasksByStatus возвращает задачи по статусу
+func (service TaskService) GetTasksByStatus(status string) (*model.TaskList, error) {
+	list, err := service.taskData.GetTasksByStatus(status, settings.TasksListRowsLimit)
 	return sliceToTasks(list), err
 }
 
+// GetTasksByDateAndStatus возвращает задачи по дате и статусу
+func (service TaskService) GetTasksByDateAndStatus(status string, date string) (*model.TaskList, error) {
+	list, err := service.taskData.GetTasksByDateAndStatus(status, date, settings.TasksListRowsLimit)
+	return sliceToTasks(list), err
+}
+
+// GetTask возвращает задачу по идентификатору
 func (service TaskService) GetTask(id string) (*model.Task, error) {
 	convId, err := strconv.Atoi(id)
 	if err != nil {
@@ -100,6 +105,7 @@ func (service TaskService) GetTask(id string) (*model.Task, error) {
 	return &task, nil
 }
 
+// DeleteTask удаляет задачу по идентификатору
 func (service TaskService) DeleteTask(id string) error {
 	convId, err := strconv.Atoi(id)
 	if err != nil {
@@ -115,6 +121,7 @@ func (service TaskService) DeleteTask(id string) error {
 	return nil
 }
 
+// DoneTask помечает задачу как выполненную
 func (service TaskService) DoneTask(id string) error {
 	convId, err := strconv.Atoi(id)
 	if err != nil {

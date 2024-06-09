@@ -2,35 +2,40 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
+
 	"github.com/ZnNr/todo-list/internal/model"
-	_ "github.com/lib/pq"
+	_ "modernc.org/sqlite"
 )
 
 const (
-	driverName = "postgres"
+	driverName = "sqlite"
 
 	tableSchema = `
- CREATE TABLE IF NOT EXISTS todolist ( 
-     id SERIAL PRIMARY KEY, 
-     date DATE, 
-     title TEXT, 
-     description TEXT, 
-     status TEXT );
+CREATE TABLE IF NOT EXISTS todolist (
+    id INTEGER PRIMARY KEY,
+    date VARCHAR(8),
+    title TEXT,
+    description TEXT, 
+    status TEXT
+);
 `
 	indexSchema = `
 CREATE INDEX IF NOT EXISTS indexdate ON todolist (date);
 `
 	insertQuery = `
-INSERT INTO todolist(date, title, description) VALUES ($1, $2, $3)
+INSERT INTO scheduler(date, title, description) VALUES (?, ?, ?)
 `
-	getTaskQuery = "SELECT * FROM todolist WHERE id = $1"
+	getTaskQuery = "SELECT * FROM todolist WHERE id = ?"
 
-	getTasksQuery = "SELECT * FROM todolist ORDER BY date LIMIT $1"
+	getTasksQuery = "SELECT * FROM todolist ORDER BY date LIMIT ?"
 
-	updateQuery = "UPDATE todolist SET date=$1, title=$2, description=$3 WHERE id=$4"
+	getTasksByDateQuery          = "SELECT * FROM todolist WHERE date = ? ORDER BY date LIMIT ?"
+	getTasksByStatusQuery        = "SELECT * FROM todolist WHERE status = ? LIMIT ?"
+	getTasksByStatusAndDateQuery = "SELECT * FROM todolist WHERE status = ? AND date = ? ORDER BY date LIMIT ?"
 
-	deleteQuery = "DELETE FROM todolist WHERE id=$1"
+	updateQuery = "UPDATE todolist SET date=?, title=?, description=?, WHERE id=?"
+
+	deleteQuery = "DELETE FROM todolist WHERE id=:id"
 )
 
 // TaskData представляет структуру для работы с данными задач
@@ -39,8 +44,12 @@ type TaskData struct {
 }
 
 // NewTaskData создает новый экземпляр TaskData с подключением к базе данных
-func NewTaskData(db *sql.DB) *TaskData {
-	return &TaskData{db: db}
+func NewTaskData(dataSourceName string) (*TaskData, error) {
+	db, err := openDb(dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+	return &TaskData{db: db}, nil
 }
 
 // CloseDb закрывает соединение с базой данных
@@ -107,28 +116,32 @@ func (data TaskData) GetTasks(limit int) ([]model.Task, error) {
 	return getTasksByRows(rows)
 }
 
-func (data TaskData) GetTasksByDateAndStatus(date string, status string, page int, itemsPerPage int) ([]model.Task, error) {
-	offset := (page - 1) * itemsPerPage
+// GetTasksByDate получает задачи по дате с ограничением по количеству
+func (data TaskData) GetTasksByDate(date string, limit int) ([]model.Task, error) {
 
-	// Генерация SQL запроса с учетом фильтрации по дате и статусу, а также пагинации
-	query := "SELECT * FROM todolist WHERE 1=1"
-	var params []interface{}
-	if date != "" {
-		query += " AND date = $1"
-		params = append(params, date)
-	}
-	if status == "Не выполнено" || status == "Выполнено" {
-		query += " AND status = $2"
-		params = append(params, status)
-	}
-	query += fmt.Sprintf(" ORDER BY date LIMIT %d OFFSET %d", itemsPerPage, offset)
-
-	// Выполнение запроса к базе данных
-	rows, err := data.db.Query(query, params...)
+	rows, err := data.db.Query(getTasksByDateQuery, date, limit)
 	if err != nil {
 		return nil, err
 	}
+	return getTasksByRows(rows)
+}
 
+// GetTasksByStatus получает задачи по статусу с ограничением по количеству
+func (data TaskData) GetTasksByStatus(status string, limit int) ([]model.Task, error) {
+
+	rows, err := data.db.Query(getTasksByStatusQuery, status, limit)
+	if err != nil {
+		return nil, err
+	}
+	return getTasksByRows(rows)
+}
+
+// GetTasksByDateAndStatus получает задачи по статусу и дате с ограничением по количеству
+func (data TaskData) GetTasksByDateAndStatus(status string, date string, limit int) ([]model.Task, error) {
+	rows, err := data.db.Query(getTasksByStatusAndDateQuery, status, date, limit)
+	if err != nil {
+		return nil, err
+	}
 	return getTasksByRows(rows)
 }
 
@@ -163,6 +176,7 @@ func (data TaskData) UpdateTask(task model.Task) (bool, error) {
 	return rowsAffected == 1, nil
 }
 
+// DeleteTask удаляет задачу из базы данных по ID
 func (data TaskData) DeleteTask(id int) (bool, error) {
 	// Получаем задачу по ID для проверки существования
 	_, err := data.GetTask(id)
@@ -179,59 +193,17 @@ func (data TaskData) DeleteTask(id int) (bool, error) {
 	return deleted == 1, err
 }
 
-func (data TaskData) GetTasksByStatus(status string, page int, itemsPerPage int) ([]model.Task, error) {
-	offset := (page - 1) * itemsPerPage
-
-	// Генерация SQL запроса с учетом фильтрации по дате и статусу, а также пагинации
-	query := "SELECT * FROM todolist WHERE 1=1"
-	var params []interface{}
-
-	if status == "Не выполнено" || status == "Выполнено" {
-		query += " AND status = $2"
-		params = append(params, status)
-	}
-	query += fmt.Sprintf(" ORDER BY date LIMIT %d OFFSET %d", itemsPerPage, offset)
-
-	// Выполнение запроса к базе данных
-	rows, err := data.db.Query(query, params...)
-	if err != nil {
-		return nil, err
-	}
-
-	return getTasksByRows(rows)
-}
-
 // openDb открывает соединение с базой данных
 func openDb(dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
 		return nil, err
 	}
-
-	err = db.Ping()
-	if err != nil {
+	if _, err := db.Exec(tableSchema); err != nil {
 		return nil, err
 	}
-
-	tx, err := db.Begin()
-	if err != nil {
+	if _, err := db.Exec(indexSchema); err != nil {
 		return nil, err
 	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
-
-	if _, err := tx.Exec(tableSchema); err != nil {
-		return nil, err
-	}
-	if _, err := tx.Exec(indexSchema); err != nil {
-		return nil, err
-	}
-
 	return db, nil
 }
