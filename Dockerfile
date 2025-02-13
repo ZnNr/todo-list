@@ -1,29 +1,22 @@
-# Используем официальный образ Go в качестве базового образа
-FROM golang:latest AS builder
+FROM golang:1.22
 
-# Установка рабочей директории внутри контейнера
 WORKDIR /app
 
-# Копирование исходных файлов приложения в рабочую директорию
-COPY . .
-
-# Копирование файлов Go из папки cmd
-COPY cmd/*.go .
-
-# Установка зависимостей
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Сборка приложения
+COPY . .
+
+COPY *.db ./
+COPY cmd/*.go ./
+
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /todo-list
 
-# Этап для создания конечного образа
-FROM alpine:latest
+ENV TODO_PORT="7540"
+ENV TODO_DBFILE="./todolist.db"
 
-# Копирование исполнимого файла приложения
-COPY --from=builder /todo-list .
 
-# Экспонируем порт, на котором будет работать приложение
+
 EXPOSE 7540
 
-# Команда для запуска приложения при старте контейнера
-CMD ["./todo-list"]
+CMD ["/todo-list"]
